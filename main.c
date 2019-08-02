@@ -6,37 +6,52 @@
 #include <limits.h>
 #include <unistd.h>
 
-const int PADDING = 4;
-int prevDepth = 0;
+#define ANSI_COLOR_RED     "\x1b[31m"
+#define ANSI_COLOR_GREEN   "\x1b[32m"
+#define ANSI_COLOR_YELLOW  "\x1b[33m"
+#define ANSI_COLOR_BLUE    "\x1b[34m"
+#define ANSI_COLOR_MAGENTA "\x1b[35m"
+#define ANSI_COLOR_CYAN    "\x1b[36m"
+#define ANSI_COLOR_RESET   "\x1b[0m"
 
-void runn(char *path, int depth);
+const int PADDING = 2;
+
+void run(char *path, int depth);
 void print(char*, int);
-void printFooter();
 
-int main(int argc, char** argv)
+int main(int argc, char *argv[])
 {
-    char cwd[1024];
-    if (getcwd(cwd, sizeof(cwd)) == NULL) 
+    char path[1024];
+    
+    if(argc == 2)
     {
-       perror("getcwd() error");
-       return 1;
+        strcpy(path, argv[1]);
+    }
+    else
+    {
+        if (getcwd(path, sizeof(path)) == NULL) 
+        {
+            perror("getcwd() error");
+            return 1;
+        }
     }
 
-    printf("%s\n", cwd);
+    printf("%s\n", path);
 
-    runn(".", 0);
-    printFooter();
+    run(path, 0);
 
     return 0;
 }
 
-void runn(char *path, int depth)
+void run(char *path, int depth)
 {
     struct dirent* dentry;
     DIR *dir;
 
     if((dir = opendir(path)) == NULL)
+    {
         return;
+    }
 
     while(1)
     {
@@ -53,7 +68,7 @@ void runn(char *path, int depth)
         strcpy(newPath, path);
         strcat(newPath, "/");
         strcat(newPath, dentry->d_name);
-        runn(newPath, depth + PADDING);
+        run(newPath, depth + PADDING);
         free(newPath);
     }
     closedir(dir);
@@ -61,20 +76,17 @@ void runn(char *path, int depth)
 
 void print(char *name, int depth)
 {
-    printf("\u251C");
-    
     for (size_t i = 0; i < depth; i++)
     {
-        printf("\u2500");
+        if((i % 2) == 0)
+            printf("\u2502");
+        else
+            printf(" ");
     }
 
-    printf("\u2500 %s (%d/%d)\n", name, prevDepth, depth);
-
-    prevDepth = depth;
-}
-
-
-void printFooter()
-{
-    printf("\u2518");
+    printf("\u251C");
+    
+    printf("\033[1;34m");
+    printf(" %s\n", name);
+    printf("\033[0m");
 }
