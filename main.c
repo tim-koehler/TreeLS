@@ -1,9 +1,11 @@
-#include <sys/types.h>
 #include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdbool.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <linux/limits.h>
 
 #define ANSI_COLOR_RED     "\x1b[31m"
@@ -14,44 +16,86 @@
 #define ANSI_COLOR_CYAN    "\x1b[36m"
 #define ANSI_COLOR_RESET   "\x1b[0m"
 
+struct Options
+{
+    char path[PATH_MAX];
+    int recursionDepth;
+    bool colorless;
+    bool all;
+};
+typedef struct Options Options;
+
 const int PADDING = 2;
 
-void run(char *path, int depth);
-void print(char*, int);
+void run(char *path, int depth, Options *options);
+void print(char*, int, int);
 
 int main(int argc, char *argv[])
 {
-    char path[PATH_MAX];
-    
-    if(argc == 2)
+    Options options;
+    options.colorless = false;
+    options.recursionDepth = 0;
+    options.all = false;
+
+    if(argc > 2)
     {
-        strcpy(path, argv[1]);
+        int opt; 
+    
+        while((opt = getopt(argc, argv, ":r:ca")) != -1)  
+        {  
+            switch(opt)  
+            {  
+                case 'r':  
+                    options.recursionDepth = atoi(optarg);  
+                    break;  
+                case 'c':  
+                    options.colorless = true;
+                    break;
+                 case 'a':  
+                    options.all = true;
+                    break;  
+                case '?':  
+                    printf("Help"); 
+                    break;  
+                default:
+                    printf("Unknown argument: %c", opt);
+                    return -1;
+            }  
+        }  
+    
+        if(optind != argc - 1)
+        {      
+            printf("To many arguments...\n");
+            return -1;  
+        }
+
+        strcpy(options.path, argv[optind]);
     }
     else
     {
-        if (getcwd(path, sizeof(path)) == NULL) 
+        if (getcwd(options.path, PATH_MAX) == NULL) 
         {
             perror("getcwd() error");
-            return 1;
+            return -1;
         }
+        strcpy(options.path, argv[1]);
     }
+    
+    printf("%s\n", options.path);
 
-    printf("%s\n", path);
-
-    run(path, 0);
+    run(options.path, 0, &options);
 
     return 0;
 }
 
-void run(char *path, int depth)
+void run(char *path, int depth, Options *options)
 {
-    struct dirent* dentry;
     DIR *dir;
+    struct dirent *dentry;
+    struct stat fileStat;
 
     if((dir = opendir(path)) == NULL)
-    {
         return;
-    }
 
     while(1)
     {
@@ -60,22 +104,34 @@ void run(char *path, int depth)
             break;
 
         if(dentry->d_name[0] == '.')
-            continue;
-        
-        print(dentry->d_name, depth);
+        {
+            if(options->all == true)
+                print(dentry->d_name, depth, 1);
 
-        // Two extra byte for '/' and '\0'
-        char *newPath = (char*) calloc(sizeof(char), strlen(path) + 1 + strlen(dentry->d_name) + 1);
-        strcpy(newPath, path);
-        strcat(newPath, "/");
-        strcat(newPath, dentry->d_name);
-        run(newPath, depth + PADDING);
-        free(newPath);
+            continue;
+        }
+
+        char currentFilePath[strlen(path) + strlen(dentry->d_name + 2)];
+        strcpy(currentFilePath, path);
+        strcat(currentFilePath, "/");
+        strcat(currentFilePath, dentry->d_name);
+
+        stat(currentFilePath, &fileStat);
+
+        if(S_ISDIR(fileStat.st_mode))
+        {
+            print(dentry->d_name, depth, 1);
+            run(currentFilePath, depth + PADDING, options);
+        }
+        else
+        {
+            print(dentry->d_name, depth, 0);
+        }
     }
     closedir(dir);
 }
 
-void print(char *name, int depth)
+void print(char *name, int depth, int isDir)
 {
     for (size_t i = 0; i < depth; i++)
     {
@@ -87,7 +143,16 @@ void print(char *name, int depth)
 
     printf("\u251C");
     
-    printf("\033[1;34m");
-    printf(" %s\n", name);
-    printf("\033[0m");
+    if(isDir == 1)
+    {
+        printf(ANSI_COLOR_BLUE);
+        printf(" %s\n", name);
+        printf(ANSI_COLOR_RESET);
+    }
+    else
+    {
+        printf(ANSI_COLOR_YELLOW);
+        printf(" %s\n", name);
+        printf(ANSI_COLOR_RESET);
+    }
 }
