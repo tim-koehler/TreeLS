@@ -16,7 +16,7 @@ int main(int argc, char *argv[])
     options.recursionDepth = 0;
     options.all = false;
    
-    if(parseOptions(argc, argv, &options) != 9)
+    if(parseOptions(argc, argv, &options) != 0)
         return -1;
 
     printf("%s\n", options.path);
