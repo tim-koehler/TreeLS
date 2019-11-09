@@ -1,6 +1,6 @@
 # TreeLS
 
-### TreeLS displays files and diretorys recursively in a tree like pattern.
+### TreeLS displays files and diretories recursively in a tree like pattern.
 
 ![Example image of tree output...](https://raw.githubusercontent.com/tim-koehler/TreeLS/master/example.png)
 <br>
